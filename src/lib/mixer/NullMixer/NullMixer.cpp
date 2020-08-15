@@ -38,7 +38,7 @@
 #include <ctype.h>
 
 unsigned
-NullMixer::mix(float *outputs, unsigned space)
+NullMixer::mix(actuator_controls_s controls[3], float *outputs, unsigned space)
 {
 	if (space > 0) {
 		*outputs = NAN;

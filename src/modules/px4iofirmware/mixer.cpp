@@ -106,7 +106,8 @@ int mixer_mix_threadsafe(float *outputs, volatile uint16_t *limits)
 	}
 
 	in_mixer = true;
-	int mixcount = mixer_group.mix(&outputs[0], PX4IO_SERVO_COUNT);
+	actuator_controls_s controls[3]{};
+	int mixcount = mixer_group.mix(controls, &outputs[0], PX4IO_SERVO_COUNT);
 	*limits = mixer_group.get_saturation_status();
 	in_mixer = false;
 
@@ -540,7 +541,7 @@ mixer_handle_text_create_mixer()
 
 	/* process the text buffer, adding new mixers as their descriptions can be parsed */
 	unsigned resid = mixer_text_length;
-	mixer_group.load_from_buf(mixer_callback, 0, &mixer_text[0], resid);
+	mixer_group.load_from_buf(&mixer_text[0], resid);
 
 	/* if anything was parsed */
 	if (resid != mixer_text_length) {

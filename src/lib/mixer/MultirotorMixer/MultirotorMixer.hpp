@@ -66,30 +66,17 @@ public:
 	/**
 	 * Constructor.
 	 *
-	 * @param control_cb		Callback invoked to read inputs.
-	 * @param cb_handle		Passed to control_cb.
 	 * @param geometry		The selected geometry.
-	 * @param roll_scale		Scaling factor applied to roll inputs
-	 *				compared to thrust.
-	 * @param pitch_scale		Scaling factor applied to pitch inputs
-	 *				compared to thrust.
-	 * @param yaw_wcale		Scaling factor applied to yaw inputs compared
-	 *				to thrust.
-	 * @param idle_speed		Minimum rotor control output value; usually
-	 *				tuned to ensure that rotors never stall at the
-	 * 				low end of their control range.
 	 */
-	MultirotorMixer(ControlCallback control_cb, uintptr_t cb_handle, MultirotorGeometry geometry);
+	MultirotorMixer(MultirotorGeometry geometry);
 
 	/**
 	 * Constructor (for testing).
 	 *
-	 * @param control_cb		Callback invoked to read inputs.
-	 * @param cb_handle		Passed to control_cb.
 	 * @param rotors		control allocation matrix
 	 * @param rotor_count		length of rotors array (= number of motors)
 	 */
-	MultirotorMixer(ControlCallback control_cb, uintptr_t cb_handle, const Rotor *rotors, unsigned rotor_count);
+	MultirotorMixer(const Rotor *rotors, unsigned rotor_count);
 	virtual ~MultirotorMixer();
 
 	// no copy, assignment, move, move assignment
@@ -104,9 +91,6 @@ public:
 	 * Given a pointer to a buffer containing a text description of the mixer,
 	 * returns a pointer to a new instance of the mixer.
 	 *
-	 * @param control_cb		The callback to invoke when fetching a
-	 *				control value.
-	 * @param cb_handle		Handle passed to the control callback.
 	 * @param buf			Buffer containing a text description of
 	 *				the mixer.
 	 * @param buflen		Length of the buffer in bytes, adjusted
@@ -114,10 +98,9 @@ public:
 	 * @return			A new MultirotorMixer instance, or nullptr
 	 *				if the text format is bad.
 	 */
-	static MultirotorMixer *from_text(Mixer::ControlCallback control_cb, uintptr_t cb_handle, const char *buf,
-					  unsigned &buflen);
+	static MultirotorMixer *from_text(const char *buf, unsigned &buflen);
 
-	unsigned		mix(float *outputs, unsigned space) override;
+	unsigned		mix(actuator_controls_s controls[3], float *outputs, unsigned space) override;
 
 	uint16_t		get_saturation_status() override { return _saturation_status.value; }
 

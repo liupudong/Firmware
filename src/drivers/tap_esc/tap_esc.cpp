@@ -147,9 +147,6 @@ private:
 
 	void subscribe();
 	void send_esc_outputs(const uint16_t *pwm, const uint8_t motor_cnt);
-	static int control_callback_trampoline(uintptr_t handle,
-					       uint8_t control_group, uint8_t control_index, float &input);
-	inline int control_callback(uint8_t control_group, uint8_t control_index, float &input);
 };
 
 const uint8_t TAP_ESC::_device_mux_map[TAP_ESC_MAX_MOTOR_NUM] = ESC_POS;
@@ -451,7 +448,7 @@ void TAP_ESC::cycle()
 		if (_is_armed && _mixers != nullptr) {
 
 			/* do mixing */
-			num_outputs = _mixers->mix(&_outputs.output[0], num_outputs);
+			num_outputs = _mixers->mix(_controls, &_outputs.output[0], num_outputs);
 			_outputs.noutputs = num_outputs;
 
 			/* publish mixer status */
@@ -628,32 +625,6 @@ void TAP_ESC::cycle()
 	}
 }
 
-int TAP_ESC::control_callback_trampoline(uintptr_t handle, uint8_t control_group, uint8_t control_index, float &input)
-{
-	TAP_ESC *obj = (TAP_ESC *)handle;
-	return obj->control_callback(control_group, control_index, input);
-}
-
-int TAP_ESC::control_callback(uint8_t control_group, uint8_t control_index, float &input)
-{
-	input = _controls[control_group].control[control_index];
-
-	/* limit control input */
-	input = math::constrain(input, -1.f, 1.f);
-
-	/* throttle not arming - mark throttle input as invalid */
-	if (_armed.prearmed && !_armed.armed) {
-		if ((control_group == actuator_controls_s::GROUP_INDEX_ATTITUDE ||
-		     control_group == actuator_controls_s::GROUP_INDEX_ATTITUDE_ALTERNATE) &&
-		    control_index == actuator_controls_s::INDEX_THROTTLE) {
-			/* set the throttle to an invalid value */
-			input = NAN;
-		}
-	}
-
-	return 0;
-}
-
 int TAP_ESC::ioctl(cdev::file_t *filp, int cmd, unsigned long arg)
 {
 	int ret = OK;
@@ -682,7 +653,7 @@ int TAP_ESC::ioctl(cdev::file_t *filp, int cmd, unsigned long arg)
 				ret = -ENOMEM;
 
 			} else {
-				ret = _mixers->load_from_buf(control_callback_trampoline, (uintptr_t)this, buf, buflen);
+				ret = _mixers->load_from_buf(buf, buflen);
 
 				if (ret != 0) {
 					PX4_DEBUG("mixer load failed with %d", ret);

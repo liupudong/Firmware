@@ -50,12 +50,12 @@
 //#define debug(fmt, args...)	syslog(fmt "\n", ##args)
 
 unsigned
-MixerGroup::mix(float *outputs, unsigned space)
+MixerGroup::mix(actuator_controls_s controls[3], float *outputs, unsigned space)
 {
 	unsigned index = 0;
 
 	for (auto mixer : _mixers) {
-		index += mixer->mix(outputs + index, space - index);
+		index += mixer->mix(controls, outputs + index, space - index);
 
 		if (index >= space) {
 			break;
@@ -170,7 +170,7 @@ MixerGroup::groups_required(uint32_t &groups)
 }
 
 int
-MixerGroup::load_from_buf(Mixer::ControlCallback control_cb, uintptr_t cb_handle, const char *buf, unsigned &buflen)
+MixerGroup::load_from_buf(const char *buf, unsigned &buflen)
 {
 	int ret = -1;
 	const char *end = buf + buflen;
@@ -193,15 +193,15 @@ MixerGroup::load_from_buf(Mixer::ControlCallback control_cb, uintptr_t cb_handle
 			break;
 
 		case 'M':
-			m = SimpleMixer::from_text(control_cb, cb_handle, p, resid);
+			m = SimpleMixer::from_text(p, resid);
 			break;
 
 		case 'R':
-			m = MultirotorMixer::from_text(control_cb, cb_handle, p, resid);
+			m = MultirotorMixer::from_text(p, resid);
 			break;
 
 		case 'H':
-			m = HelicopterMixer::from_text(control_cb, cb_handle, p, resid);
+			m = HelicopterMixer::from_text(p, resid);
 			break;
 
 		default:

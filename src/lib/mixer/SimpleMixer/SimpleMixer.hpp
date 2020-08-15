@@ -75,7 +75,7 @@ public:
 	 *				becomes the property of the mixer and
 	 *				will be freed when the mixer is deleted.
 	 */
-	SimpleMixer(ControlCallback control_cb, uintptr_t cb_handle, mixer_simple_s *mixinfo);
+	SimpleMixer(mixer_simple_s *mixinfo);
 	virtual ~SimpleMixer();
 
 	// no copy, assignment, move, move assignment
@@ -90,9 +90,6 @@ public:
 	 * Given a pointer to a buffer containing a text description of the mixer,
 	 * returns a pointer to a new instance of the mixer.
 	 *
-	 * @param control_cb		The callback to invoke when fetching a
-	 *				control value.
-	 * @param cb_handle		Handle passed to the control callback.
 	 * @param buf			Buffer containing a text description of
 	 *				the mixer.
 	 * @param buflen		Length of the buffer in bytes, adjusted
@@ -100,18 +97,14 @@ public:
 	 * @return			A new SimpleMixer instance, or nullptr
 	 *				if the text format is bad.
 	 */
-	static SimpleMixer		*from_text(Mixer::ControlCallback control_cb, uintptr_t cb_handle, const char *buf,
-			unsigned &buflen);
+	static SimpleMixer		*from_text(const char *buf, unsigned &buflen);
 
-	unsigned			mix(float *outputs, unsigned space) override;
+	unsigned			mix(actuator_controls_s controls[3], float *outputs, unsigned space) override;
 
 	void				groups_required(uint32_t &groups) override;
 
 	/**
 	 * Check that the mixer configuration as loaded is sensible.
-	 *
-	 * Note that this function will call control_cb, but only cares about
-	 * error returns, not the input value.
 	 *
 	 * @return			Zero if the mixer makes sense, nonzero otherwise.
 	 */

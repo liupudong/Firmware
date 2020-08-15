@@ -57,13 +57,8 @@
 
 #include <unit_test.h>
 
-static int	mixer_callback(uintptr_t handle,
-			       uint8_t control_group,
-			       uint8_t control_index,
-			       float &control);
-
 static const unsigned output_max = 8;
-static float actuator_controls[output_max];
+static actuator_controls_s actuator_controls[3];
 static bool should_prearm = false;
 
 #ifdef __PX4_DARWIN
@@ -256,7 +251,7 @@ bool MixerTest::load_mixer(const char *filename, const char *buf, unsigned loade
 	/* load at once test */
 	unsigned xx = loaded;
 	mixer_group.reset();
-	mixer_group.load_from_buf(mixer_callback, 0, &buf[0], xx);
+	mixer_group.load_from_buf(&buf[0], xx);
 
 	if (expected_count > 0) {
 		ut_compare("check number of mixers loaded", mixer_group.count(), expected_count);
@@ -267,7 +262,7 @@ bool MixerTest::load_mixer(const char *filename, const char *buf, unsigned loade
 	empty_buf[0] = ' ';
 	empty_buf[1] = '\0';
 	mixer_group.reset();
-	mixer_group.load_from_buf(mixer_callback, 0, &empty_buf[0], empty_load);
+	mixer_group.load_from_buf(&empty_buf[0], empty_load);
 
 	if (verbose) {
 		PX4_INFO("empty buffer load: loaded %u mixers, used: %u", mixer_group.count(), empty_load);
@@ -302,7 +297,7 @@ bool MixerTest::load_mixer(const char *filename, const char *buf, unsigned loade
 
 		/* process the text buffer, adding new mixers as their descriptions can be parsed */
 		resid = mixer_text_length;
-		mixer_group.load_from_buf(mixer_callback, 0, &mixer_text[0], resid);
+		mixer_group.load_from_buf(&mixer_text[0], resid);
 
 		/* if anything was parsed */
 		if (resid != mixer_text_length) {
@@ -368,7 +363,7 @@ bool MixerTest::mixerTest()
 
 	/* run through arming phase */
 	for (unsigned i = 0; i < output_max; i++) {
-		actuator_controls[i] = 0.1f;
+		actuator_controls[0].control[i] = 0.1f;
 		r_page_servo_disarmed[i] = PWM_MOTOR_OFF;
 		r_page_servo_control_min[i] = PWM_DEFAULT_MIN;
 		r_page_servo_control_max[i] = PWM_DEFAULT_MAX;
@@ -378,7 +373,7 @@ bool MixerTest::mixerTest()
 
 	/* mix */
 	should_prearm = true;
-	mixed = mixer_group.mix(&outputs[0], output_max);
+	mixed = mixer_group.mix(actuator_controls, &outputs[0], output_max);
 
 	output_limit_calc(should_arm, should_prearm, mixed, reverse_pwm_mask, r_page_servo_disarmed, r_page_servo_control_min,
 			  r_page_servo_control_max, outputs, r_page_servos, &output_limit);
@@ -407,7 +402,7 @@ bool MixerTest::mixerTest()
 
 	/* simulate another orb_copy() from actuator controls */
 	for (unsigned i = 0; i < output_max; i++) {
-		actuator_controls[i] = 0.1f;
+		actuator_controls[0].control[i] = 0.1f;
 	}
 
 	//PX4_INFO("ARMING TEST: STARTING RAMP");
@@ -419,7 +414,7 @@ bool MixerTest::mixerTest()
 	while (hrt_elapsed_time(&starttime) < INIT_TIME_US + RAMP_TIME_US + 2 * sleep_quantum_us) {
 
 		/* mix */
-		mixed = mixer_group.mix(&outputs[0], output_max);
+		mixed = mixer_group.mix(actuator_controls, &outputs[0], output_max);
 
 		output_limit_calc(should_arm, should_prearm, mixed, reverse_pwm_mask, r_page_servo_disarmed, r_page_servo_control_min,
 				  r_page_servo_control_max, outputs, r_page_servos, &output_limit);
@@ -456,14 +451,14 @@ bool MixerTest::mixerTest()
 	for (int j = -jmax; j <= jmax; j++) {
 
 		for (unsigned i = 0; i < output_max; i++) {
-			actuator_controls[i] = j / 10.0f + 0.1f * i;
+			actuator_controls[0].control[i] = j / 10.0f + 0.1f * i;
 			r_page_servo_disarmed[i] = PWM_LOWEST_MIN;
 			r_page_servo_control_min[i] = PWM_DEFAULT_MIN;
 			r_page_servo_control_max[i] = PWM_DEFAULT_MAX;
 		}
 
 		/* mix */
-		mixed = mixer_group.mix(&outputs[0], output_max);
+		mixed = mixer_group.mix(actuator_controls, &outputs[0], output_max);
 
 		output_limit_calc(should_arm, should_prearm, mixed, reverse_pwm_mask, r_page_servo_disarmed, r_page_servo_control_min,
 				  r_page_servo_control_max, outputs, r_page_servos, &output_limit);
@@ -491,7 +486,7 @@ bool MixerTest::mixerTest()
 	while (hrt_elapsed_time(&starttime) < 600000) {
 
 		/* mix */
-		mixed = mixer_group.mix(&outputs[0], output_max);
+		mixed = mixer_group.mix(actuator_controls, &outputs[0], output_max);
 
 		output_limit_calc(should_arm, should_prearm, mixed, reverse_pwm_mask, r_page_servo_disarmed, r_page_servo_control_min,
 				  r_page_servo_control_max, outputs, r_page_servos, &output_limit);
@@ -528,7 +523,7 @@ bool MixerTest::mixerTest()
 	while (hrt_elapsed_time(&starttime) < 600000 + RAMP_TIME_US) {
 
 		/* mix */
-		mixed = mixer_group.mix(&outputs[0], output_max);
+		mixed = mixer_group.mix(actuator_controls, &outputs[0], output_max);
 
 		output_limit_calc(should_arm, should_prearm, mixed, reverse_pwm_mask, r_page_servo_disarmed, r_page_servo_control_min,
 				  r_page_servo_control_max, outputs, r_page_servos, &output_limit);
@@ -568,27 +563,4 @@ bool MixerTest::mixerTest()
 	}
 
 	return true;
-}
-
-static int
-mixer_callback(uintptr_t handle, uint8_t control_group, uint8_t control_index, float &control)
-{
-	control = 0.0f;
-
-	if (control_group != 0) {
-		return -1;
-	}
-
-	if (control_index >= (sizeof(actuator_controls) / sizeof(actuator_controls[0]))) {
-		return -1;
-	}
-
-	control = actuator_controls[control_index];
-
-	if (should_prearm && control_group == actuator_controls_s::GROUP_INDEX_ATTITUDE &&
-	    control_index == actuator_controls_s::INDEX_THROTTLE) {
-		control = NAN;
-	}
-
-	return 0;
 }

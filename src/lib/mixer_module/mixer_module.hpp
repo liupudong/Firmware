@@ -196,8 +196,6 @@ private:
 	void publishMixerStatus(const actuator_outputs_s &actuator_outputs);
 	void updateLatencyPerfCounter(const actuator_outputs_s &actuator_outputs);
 
-	static int controlCallback(uintptr_t handle, uint8_t control_group, uint8_t control_index, float &input);
-
 	enum class MotorOrdering : int32_t {
 		PX4 = 0,
 		Betaflight = 1

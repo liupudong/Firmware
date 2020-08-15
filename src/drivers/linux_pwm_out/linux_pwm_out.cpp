@@ -123,20 +123,6 @@ static void update_params(Mixer::Airmode &airmode);
 
 /* mixer initialization */
 int initialize_mixer(const char *mixer_filename);
-int mixer_control_callback(uintptr_t handle, uint8_t control_group, uint8_t control_index, float &input);
-
-
-int mixer_control_callback(uintptr_t handle,
-			   uint8_t control_group,
-			   uint8_t control_index,
-			   float &input)
-{
-	const actuator_controls_s *controls = (actuator_controls_s *)handle;
-	input = controls[control_group].control[control_index];
-
-	return 0;
-}
-
 
 void update_params(Mixer::Airmode &airmode)
 {
@@ -147,7 +133,6 @@ void update_params(Mixer::Airmode &airmode)
 		param_get(param_handle, (int32_t *)&airmode);
 	}
 }
-
 
 int initialize_mixer(const char *mixer_filename)
 {
@@ -160,7 +145,7 @@ int initialize_mixer(const char *mixer_filename)
 	// PX4_INFO("Trying to initialize mixer from config file %s", mixer_filename);
 
 	if (load_mixer_file(mixer_filename, buf, buflen) == 0) {
-		if (_mixer_group->load_from_buf(mixer_control_callback, (uintptr_t) &_controls, buf, buflen) == 0) {
+		if (_mixer_group->load_from_buf(buf, buflen) == 0) {
 			PX4_INFO("Loaded mixer from file %s", mixer_filename);
 			return 0;
 

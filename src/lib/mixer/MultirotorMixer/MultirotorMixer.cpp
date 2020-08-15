@@ -45,6 +45,8 @@
 
 #include <mathlib/mathlib.h>
 
+#include <uORB/topics/actuator_controls.h>
+
 #ifdef MIXER_MULTIROTOR_USE_MOCK_GEOMETRY
 enum class MultirotorGeometry : MultirotorGeometryUnderlyingType {
 	QUAD_X,
@@ -79,14 +81,12 @@ const char *_config_key[] = {"4x"};
 //#include <debug.h>
 //#define debug(fmt, args...)	syslog(fmt "\n", ##args)
 
-MultirotorMixer::MultirotorMixer(ControlCallback control_cb, uintptr_t cb_handle, MultirotorGeometry geometry) :
-	MultirotorMixer(control_cb, cb_handle, _config_index[(int)geometry], _config_rotor_count[(int)geometry])
+MultirotorMixer::MultirotorMixer(MultirotorGeometry geometry) :
+	MultirotorMixer(_config_index[(int)geometry], _config_rotor_count[(int)geometry])
 {
 }
 
-MultirotorMixer::MultirotorMixer(ControlCallback control_cb, uintptr_t cb_handle, const Rotor *rotors,
-				 unsigned rotor_count) :
-	Mixer(control_cb, cb_handle),
+MultirotorMixer::MultirotorMixer(const Rotor *rotors, unsigned rotor_count) :
 	_rotor_count(rotor_count),
 	_rotors(rotors),
 	_outputs_prev(new float[_rotor_count]),
@@ -104,7 +104,7 @@ MultirotorMixer::~MultirotorMixer()
 }
 
 MultirotorMixer *
-MultirotorMixer::from_text(Mixer::ControlCallback control_cb, uintptr_t cb_handle, const char *buf, unsigned &buflen)
+MultirotorMixer::from_text(const char *buf, unsigned &buflen)
 {
 	MultirotorGeometry geometry = MultirotorGeometry::MAX_GEOMETRY;
 	char geomname[16];
@@ -143,7 +143,7 @@ MultirotorMixer::from_text(Mixer::ControlCallback control_cb, uintptr_t cb_handl
 
 	debug("adding multirotor mixer '%s'", geomname);
 
-	return new MultirotorMixer(control_cb, cb_handle, geometry);
+	return new MultirotorMixer(geometry);
 }
 
 float
@@ -314,16 +314,16 @@ void MultirotorMixer::mix_yaw(float yaw, float *outputs)
 }
 
 unsigned
-MultirotorMixer::mix(float *outputs, unsigned space)
+MultirotorMixer::mix(actuator_controls_s controls[3], float *outputs, unsigned space)
 {
 	if (space < _rotor_count) {
 		return 0;
 	}
 
-	const float roll = math::constrain(get_control(0, 0), -1.f, 1.f);
-	const float pitch = math::constrain(get_control(0, 1), -1.f, 1.f);
-	const float yaw = math::constrain(get_control(0, 2), -1.f, 1.f);
-	const float thrust = math::constrain(get_control(0, 3), 0.f, 1.f);
+	const float roll = math::constrain(controls[0].control[actuator_controls_s::INDEX_ROLL], -1.f, 1.f);
+	const float pitch = math::constrain(controls[0].control[actuator_controls_s::INDEX_PITCH], -1.f, 1.f);
+	const float yaw = math::constrain(controls[0].control[actuator_controls_s::INDEX_YAW], -1.f, 1.f);
+	const float thrust = math::constrain(controls[0].control[actuator_controls_s::INDEX_THROTTLE], 0.f, 1.f);
 
 	// clean out class variable used to capture saturation
 	_saturation_status.value = 0;

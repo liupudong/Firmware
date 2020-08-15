@@ -59,3 +59,5 @@ if(PX4IO_PERF)
 	target_compile_definitions(px4iofirmware PRIVATE PX4IO_PERF)
 	target_link_libraries(px4iofirmware PRIVATE perf)
 endif()
+
+target_compile_options(px4iofirmware PRIVATE -Wno-error)

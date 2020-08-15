@@ -45,8 +45,7 @@
 #define debug(fmt, args...)	do { } while(0)
 //#define debug(fmt, args...)	do { printf("[mixer] " fmt "\n", ##args); } while(0)
 
-SimpleMixer::SimpleMixer(ControlCallback control_cb, uintptr_t cb_handle, mixer_simple_s *mixinfo) :
-	Mixer(control_cb, cb_handle),
+SimpleMixer::SimpleMixer(mixer_simple_s *mixinfo) :
 	_pinfo(mixinfo)
 {
 }
@@ -145,7 +144,7 @@ SimpleMixer::parse_control_scaler(const char *buf, unsigned &buflen, mixer_scale
 }
 
 SimpleMixer *
-SimpleMixer::from_text(Mixer::ControlCallback control_cb, uintptr_t cb_handle, const char *buf, unsigned &buflen)
+SimpleMixer::from_text(const char *buf, unsigned &buflen)
 {
 	SimpleMixer *sm = nullptr;
 	mixer_simple_s *mixinfo = nullptr;
@@ -218,7 +217,7 @@ SimpleMixer::from_text(Mixer::ControlCallback control_cb, uintptr_t cb_handle, c
 		}
 	}
 
-	sm = new SimpleMixer(control_cb, cb_handle, mixinfo);
+	sm = new SimpleMixer(mixinfo);
 
 	if (sm != nullptr) {
 		mixinfo = nullptr;
@@ -238,7 +237,7 @@ out:
 }
 
 unsigned
-SimpleMixer::mix(float *outputs, unsigned space)
+SimpleMixer::mix(actuator_controls_s controls[3], float *outputs, unsigned space)
 {
 	float sum = 0.0f;
 
@@ -251,12 +250,7 @@ SimpleMixer::mix(float *outputs, unsigned space)
 	}
 
 	for (unsigned i = 0; i < _pinfo->control_count; i++) {
-		float input = 0.0f;
-
-		_control_cb(_cb_handle,
-			    _pinfo->controls[i].control_group,
-			    _pinfo->controls[i].control_index,
-			    input);
+		float input = controls[_pinfo->controls[i].control_group].control[_pinfo->controls[i].control_index];
 
 		sum += scale(_pinfo->controls[i].scaler, input);
 	}
@@ -276,8 +270,6 @@ SimpleMixer::groups_required(uint32_t &groups)
 int
 SimpleMixer::check()
 {
-	float junk;
-
 	/* sanity that presumes that a mixer includes a control no more than once */
 	/* max of 32 groups due to groups_required API */
 	if (_pinfo->control_count > 32) {
@@ -293,14 +285,6 @@ SimpleMixer::check()
 
 	/* validate input scalers */
 	for (unsigned i = 0; i < _pinfo->control_count; i++) {
-
-		/* verify that we can fetch the control */
-		if (_control_cb(_cb_handle,
-				_pinfo->controls[i].control_group,
-				_pinfo->controls[i].control_index,
-				junk) != 0) {
-			return -3;
-		}
 
 		/* validate the scaler */
 		ret = scale_check(_pinfo->controls[i].scaler);

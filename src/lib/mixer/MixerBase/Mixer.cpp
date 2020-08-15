@@ -46,16 +46,6 @@
 #define debug(fmt, args...)	do { } while(0)
 //#define debug(fmt, args...)	do { printf("[mixer] " fmt "\n", ##args); } while(0)
 
-float
-Mixer::get_control(uint8_t group, uint8_t index)
-{
-	float value;
-
-	_control_cb(_cb_handle, group, index, value);
-
-	return value;
-}
-
 const char *
 Mixer::findtag(const char *buf, unsigned &buflen, char tag)
 {

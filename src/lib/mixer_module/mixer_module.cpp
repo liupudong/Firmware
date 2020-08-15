@@ -384,7 +384,7 @@ bool MixingOutput::update()
 
 	/* do mixing */
 	float outputs[MAX_ACTUATORS] {};
-	const unsigned mixed_num_outputs = _mixers->mix(outputs, _max_num_outputs);
+	const unsigned mixed_num_outputs = _mixers->mix(_controls, outputs, _max_num_outputs);
 
 	/* the output limit call takes care of out of band errors, NaN and constrains */
 	output_limit_calc(_throttle_armed, armNoThrottle(), mixed_num_outputs, _reverse_output_mask,
@@ -513,40 +513,6 @@ int MixingOutput::reorderedMotorIndex(int index) const
 	return index;
 }
 
-int MixingOutput::controlCallback(uintptr_t handle, uint8_t control_group, uint8_t control_index, float &input)
-{
-	const MixingOutput *output = (const MixingOutput *)handle;
-
-	input = output->_controls[control_group].control[control_index];
-
-	/* limit control input */
-	input = math::constrain(input, -1.f, 1.f);
-
-	/* motor spinup phase - lock throttle to zero */
-	if (output->_output_limit.state == OUTPUT_LIMIT_STATE_RAMP) {
-		if ((control_group == actuator_controls_s::GROUP_INDEX_ATTITUDE ||
-		     control_group == actuator_controls_s::GROUP_INDEX_ATTITUDE_ALTERNATE) &&
-		    control_index == actuator_controls_s::INDEX_THROTTLE) {
-			/* limit the throttle output to zero during motor spinup,
-			 * as the motors cannot follow any demand yet
-			 */
-			input = 0.0f;
-		}
-	}
-
-	/* throttle not arming - mark throttle input as invalid */
-	if (output->armNoThrottle() && !output->_armed.in_esc_calibration_mode) {
-		if ((control_group == actuator_controls_s::GROUP_INDEX_ATTITUDE ||
-		     control_group == actuator_controls_s::GROUP_INDEX_ATTITUDE_ALTERNATE) &&
-		    control_index == actuator_controls_s::INDEX_THROTTLE) {
-			/* set the throttle to an invalid value */
-			input = NAN;
-		}
-	}
-
-	return 0;
-}
-
 void MixingOutput::resetMixer()
 {
 	if (_mixers != nullptr) {
@@ -569,7 +535,7 @@ int MixingOutput::loadMixer(const char *buf, unsigned len)
 		return -ENOMEM;
 	}
 
-	int ret = _mixers->load_from_buf(controlCallback, (uintptr_t)this, buf, len);
+	int ret = _mixers->load_from_buf(buf, len);
 
 	if (ret != 0) {
 		PX4_ERR("mixer load failed with %d", ret);

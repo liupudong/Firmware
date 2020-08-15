@@ -42,6 +42,7 @@
 #include <mathlib/mathlib.h>
 #include <cstdio>
 #include <px4_platform_common/defines.h>
+#include <uORB/topics/actuator_controls.h>
 
 #define debug(fmt, args...)	do { } while(0)
 //#define debug(fmt, args...)	do { printf("[mixer] " fmt "\n", ##args); } while(0)
@@ -50,14 +51,13 @@
 
 using math::constrain;
 
-HelicopterMixer::HelicopterMixer(ControlCallback control_cb, uintptr_t cb_handle, mixer_heli_s mixer_info) :
-	Mixer(control_cb, cb_handle),
+HelicopterMixer::HelicopterMixer(mixer_heli_s mixer_info) :
 	_mixer_info(mixer_info)
 {
 }
 
 HelicopterMixer *
-HelicopterMixer::from_text(Mixer::ControlCallback control_cb, uintptr_t cb_handle, const char *buf, unsigned &buflen)
+HelicopterMixer::from_text(const char *buf, unsigned &buflen)
 {
 	mixer_heli_s mixer_info;
 	unsigned swash_plate_servo_count = 0;
@@ -180,7 +180,7 @@ HelicopterMixer::from_text(Mixer::ControlCallback control_cb, uintptr_t cb_handl
 
 	debug("remaining in buf: %d, first char: %c", buflen, buf[0]);
 
-	HelicopterMixer *hm = new HelicopterMixer(control_cb, cb_handle, mixer_info);
+	HelicopterMixer *hm = new HelicopterMixer(mixer_info);
 
 	if (hm != nullptr) {
 		debug("loaded heli mixer with %d swash plate input(s)", mixer_info.control_count);
@@ -193,14 +193,14 @@ HelicopterMixer::from_text(Mixer::ControlCallback control_cb, uintptr_t cb_handl
 }
 
 unsigned
-HelicopterMixer::mix(float *outputs, unsigned space)
+HelicopterMixer::mix(actuator_controls_s controls[3], float *outputs, unsigned space)
 {
 	if (space < _mixer_info.control_count + 1u) {
 		return 0;
 	}
 
 	/* Find index to use for curves */
-	float thrust_cmd = get_control(0, 3);
+	float thrust_cmd = controls[0].control[actuator_controls_s::INDEX_THROTTLE];
 	int idx = (thrust_cmd / 0.25f);
 
 	/* Make sure idx is in range */
@@ -222,8 +222,8 @@ HelicopterMixer::mix(float *outputs, unsigned space)
 	float po = (_mixer_info.pitch_curve[idx]) - (pg * idx * 0.25f);
 	float collective_pitch = constrain((pg * thrust_cmd + po), -0.5f, 0.5f);
 
-	float roll_cmd = get_control(0, 0);
-	float pitch_cmd = get_control(0, 1);
+	float roll_cmd = controls[0].control[actuator_controls_s::INDEX_ROLL];
+	float pitch_cmd = controls[0].control[actuator_controls_s::INDEX_PITCH];
 
 	outputs[0] = throttle;
 

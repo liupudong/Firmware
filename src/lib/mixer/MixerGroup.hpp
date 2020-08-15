@@ -55,7 +55,7 @@ public:
 	MixerGroup(MixerGroup &&) = delete;
 	MixerGroup &operator=(MixerGroup &&) = delete;
 
-	unsigned			mix(float *outputs, unsigned space);
+	unsigned			mix(actuator_controls_s controls[3], float *outputs, unsigned space);
 
 	uint16_t			get_saturation_status();
 
@@ -133,7 +133,7 @@ public:
 	 *				bytes as they are consumed.
 	 * @return			Zero on successful load, nonzero otherwise.
 	 */
-	int				load_from_buf(Mixer::ControlCallback control_cb, uintptr_t cb_handle, const char *buf, unsigned &buflen);
+	int				load_from_buf(const char *buf, unsigned &buflen);
 
 	/**
 	 * @brief      Update slew rate parameter. This tells instances of the class MultirotorMixer

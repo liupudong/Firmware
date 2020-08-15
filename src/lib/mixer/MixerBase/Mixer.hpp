@@ -129,6 +129,8 @@
 #include <containers/List.hpp>
 #include <mathlib/mathlib.h>
 
+#include <uORB/topics/actuator_controls.h>
+
 /**
  * Abstract class defining a mixer mixing zero or more inputs to
  * one or more outputs.
@@ -142,23 +144,7 @@ public:
 		roll_pitch_yaw = 2
 	};
 
-	/**
-	 * Fetch a control value.
-	 *
-	 * @param handle		Token passed when the callback is registered.
-	 * @param control_group		The group to fetch the control from.
-	 * @param control_index		The group-relative index to fetch the control from.
-	 * @param control		The returned control
-	 * @return			Zero if the value was fetched, nonzero otherwise.
-	 */
-	typedef int	(* ControlCallback)(uintptr_t handle, uint8_t control_group, uint8_t control_index, float &control);
-
-	/**
-	 * Constructor.
-	 *
-	 * @param control_cb		Callback invoked when reading controls.
-	 */
-	Mixer(ControlCallback control_cb, uintptr_t cb_handle) : _control_cb(control_cb), _cb_handle(cb_handle) {}
+	Mixer() = default;
 	virtual ~Mixer() = default;
 
 	// no copy, assignment, move, move assignment
@@ -174,7 +160,7 @@ public:
 	 * @param space			The number of available entries in the output array;
 	 * @return			The number of entries in the output array that were populated.
 	 */
-	virtual unsigned		mix(float *outputs, unsigned space) = 0;
+	virtual unsigned		mix(actuator_controls_s controls[3], float *outputs, unsigned space) = 0;
 
 	/**
 	 * Get the saturation status.
@@ -230,19 +216,6 @@ public:
 	virtual unsigned		get_multirotor_count()  { return 0; }
 
 protected:
-
-	/** client-supplied callback used when fetching control values */
-	ControlCallback			_control_cb;
-	uintptr_t			_cb_handle;
-
-	/**
-	 * Invoke the client callback to fetch a control value.
-	 *
-	 * @param group			Control group to fetch from.
-	 * @param index			Control index to fetch.
-	 * @return			The control value.
-	 */
-	float				get_control(uint8_t group, uint8_t index);
 
 	/**
 	 * Find a tag

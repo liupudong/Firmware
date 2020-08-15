@@ -84,7 +84,7 @@ int main(int argc, char *argv[])
 		       &rotors[i].yaw_scale, &rotors[i].thrust_scale);
 	}
 
-	MultirotorMixer mixer(mixer_callback, 0, rotors, rotor_count);
+	MultirotorMixer mixer(rotors, rotor_count);
 	mixer.set_airmode((Mixer::Airmode)airmode);
 
 	int test_counter = 0;
@@ -104,7 +104,7 @@ int main(int argc, char *argv[])
 		}
 
 		// do the mixing
-		if (mixer.mix(actuator_outputs, output_max) != rotor_count) {
+		if (mixer.mix(actuator_controls, actuator_outputs, output_max) != rotor_count) {
 			return -1;
 		}
 
